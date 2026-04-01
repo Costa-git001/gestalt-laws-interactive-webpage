@@ -1,0 +1,465 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Gestalt Laws Explorer</title>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Mono:wght@400;500&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet"/>
+  <style>
+    :root {
+      --bg: #0e0f13;
+      --surface: #16181f;
+      --surface2: #1e2029;
+      --border: #2a2d3a;
+      --accent: #c8a96e;
+      --accent2: #7eb8c9;
+      --text: #e8e4dc;
+      --muted: #7a7e91;
+      --highlight: #c8a96e22;
+      --done: #4caf7d;
+      --radius: 12px;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'DM Sans', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 40px 20px 80px;
+      background-image:
+        radial-gradient(ellipse 60% 40% at 20% 10%, #c8a96e0d 0%, transparent 60%),
+        radial-gradient(ellipse 50% 30% at 80% 85%, #7eb8c90a 0%, transparent 60%);
+    }
+
+    /* ── Header ── */
+    header {
+      text-align: center;
+      margin-bottom: 48px;
+      animation: fadeUp .6s ease both;
+    }
+    header h1 {
+      font-family: 'DM Serif Display', serif;
+      font-size: clamp(32px, 5vw, 52px);
+      line-height: 1.15;
+      color: var(--text);
+    }
+    header h1 em {
+      color: var(--accent);
+      font-style: italic;
+    }
+    header p {
+      margin-top: 14px;
+      color: var(--muted);
+      font-size: 14px;
+      font-weight: 300;
+    }
+
+    /* ── Layout ── */
+    .shell {
+      display: grid;
+      grid-template-columns: 260px 1fr;
+      gap: 24px;
+      width: 100%;
+      max-width: 960px;
+      animation: fadeUp .6s .15s ease both;
+    }
+
+    /* ── Sidebar / Menu ── */
+    .sidebar {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .menu-label {
+      font-family: 'DM Mono', monospace;
+      font-size: 10px;
+      letter-spacing: .14em;
+      text-transform: uppercase;
+      color: var(--muted);
+      padding: 0 14px;
+      margin-bottom: 6px;
+    }
+
+    .law-btn {
+      position: relative;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 14px 16px;
+      cursor: pointer;
+      text-align: left;
+      color: var(--text);
+      font-family: 'DM Sans', sans-serif;
+      font-size: 14px;
+      font-weight: 400;
+      transition: border-color .2s, background .2s, transform .15s;
+      overflow: hidden;
+    }
+    .law-btn::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: var(--highlight);
+      opacity: 0;
+      transition: opacity .2s;
+      border-radius: inherit;
+    }
+    .law-btn:hover { border-color: var(--accent); transform: translateX(3px); }
+    .law-btn:hover::before { opacity: 1; }
+
+    .law-btn .btn-inner {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      position: relative;
+    }
+    .law-btn .num {
+      font-family: 'DM Mono', monospace;
+      font-size: 11px;
+      color: var(--muted);
+      min-width: 20px;
+    }
+    .law-btn .name { flex: 1; }
+    .law-btn .tick {
+      width: 18px; height: 18px;
+      border-radius: 50%;
+      border: 1.5px solid var(--border);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 10px;
+      transition: background .25s, border-color .25s;
+      flex-shrink: 0;
+    }
+
+    /* active state */
+    .law-btn.active {
+      background: var(--surface2);
+      border-color: var(--accent);
+    }
+    .law-btn.active::before { opacity: 1; }
+    .law-btn.active .num { color: var(--accent); }
+    .law-btn.active .name { color: var(--accent); font-weight: 600; }
+
+    /* viewed state */
+    .law-btn.viewed .tick {
+      background: var(--done);
+      border-color: var(--done);
+      color: #fff;
+    }
+    .law-btn.viewed .tick::after { content: '✓'; }
+
+    /* ── Content panel ── */
+    .panel {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 36px 40px;
+      min-height: 420px;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* placeholder */
+    .placeholder {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 16px;
+      color: var(--muted);
+      text-align: center;
+    }
+    .placeholder .icon {
+      font-size: 48px;
+      opacity: .3;
+    }
+    .placeholder p { font-size: 14px; font-weight: 300; }
+
+    /* definition card */
+    .definition {
+      flex: 1;
+      display: none;
+      flex-direction: column;
+      gap: 20px;
+      animation: slideIn .35s cubic-bezier(.22,.68,0,1.2) both;
+    }
+    .definition.show { display: flex; }
+
+    .def-tag {
+      font-family: 'DM Mono', monospace;
+      font-size: 10px;
+      letter-spacing: .16em;
+      text-transform: uppercase;
+      color: var(--accent2);
+    }
+    .def-title {
+      font-family: 'DM Serif Display', serif;
+      font-size: clamp(24px, 3.5vw, 36px);
+      line-height: 1.2;
+      color: var(--text);
+    }
+    .def-divider {
+      width: 48px; height: 2px;
+      background: var(--accent);
+      border-radius: 2px;
+    }
+    .def-body {
+      font-size: 15px;
+      font-weight: 300;
+      line-height: 1.75;
+      color: #ccc9be;
+      max-width: 560px;
+    }
+    .def-example {
+      margin-top: auto;
+      background: var(--surface2);
+      border-left: 3px solid var(--accent2);
+      border-radius: 0 8px 8px 0;
+      padding: 16px 20px;
+      font-size: 13px;
+      font-weight: 300;
+      color: var(--muted);
+      line-height: 1.6;
+    }
+    .def-example strong {
+      display: block;
+      font-family: 'DM Mono', monospace;
+      font-size: 10px;
+      letter-spacing: .12em;
+      text-transform: uppercase;
+      color: var(--accent2);
+      margin-bottom: 6px;
+    }
+
+    /* ── Progress section ── */
+    .progress-section {
+      width: 100%;
+      max-width: 960px;
+      margin-top: 28px;
+      animation: fadeUp .6s .3s ease both;
+    }
+    .progress-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 12px;
+    }
+    .progress-label {
+      font-family: 'DM Mono', monospace;
+      font-size: 11px;
+      letter-spacing: .14em;
+      text-transform: uppercase;
+      color: var(--muted);
+    }
+    .progress-pct {
+      font-family: 'DM Serif Display', serif;
+      font-size: 22px;
+      color: var(--accent);
+      transition: color .3s;
+    }
+    .progress-pct.complete { color: var(--done); }
+
+    .bar-track {
+      height: 10px;
+      background: var(--surface2);
+      border-radius: 99px;
+      overflow: hidden;
+      border: 1px solid var(--border);
+    }
+    .bar-fill {
+      height: 100%;
+      border-radius: 99px;
+      background: linear-gradient(90deg, var(--accent) 0%, var(--accent2) 100%);
+      width: 0%;
+      transition: width .5s cubic-bezier(.22,.68,0,1.2);
+    }
+    .bar-fill.complete {
+      background: linear-gradient(90deg, var(--done) 0%, #7eb8c9 100%);
+    }
+    .progress-sub {
+      margin-top: 10px;
+      font-size: 12px;
+      color: var(--muted);
+      font-weight: 300;
+    }
+    .progress-sub span { color: var(--text); font-weight: 500; }
+
+    /* ── Animations ── */
+    @keyframes fadeUp {
+      from { opacity:0; transform: translateY(18px); }
+      to   { opacity:1; transform: translateY(0); }
+    }
+    @keyframes slideIn {
+      from { opacity:0; transform: translateX(-12px) scale(.98); }
+      to   { opacity:1; transform: translateX(0) scale(1); }
+    }
+
+    /* ── Responsive ── */
+    @media (max-width: 680px) {
+      .shell { grid-template-columns: 1fr; }
+      .panel { padding: 24px 20px; }
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>The Six <em>Gestalt</em> Laws</h1>
+  <p>Select a law from the menu to view its definition &amp; example.</p>
+</header>
+
+<div class="shell">
+
+  <!-- ── Sidebar ── -->
+  <nav class="sidebar" id="menu">
+    <div class="menu-label">Laws of Perception</div>
+  </nav>
+
+  <!-- ── Content panel ── -->
+  <main class="panel" id="panel">
+    <div class="placeholder" id="placeholder">
+      <div class="icon">◎</div>
+      <p>Click any law on the left<br>to explore its definition.</p>
+    </div>
+  </main>
+
+</div>
+
+<!-- ── Progress ── -->
+<section class="progress-section">
+  <div class="progress-header">
+    <span class="progress-label">Viewing Progress</span>
+    <span class="progress-pct" id="pctText">0%</span>
+  </div>
+  <div class="bar-track">
+    <div class="bar-fill" id="barFill"></div>
+  </div>
+  <p class="progress-sub" id="progressSub">
+    <span id="viewedCount">0</span> of <span id="totalCount">6</span> definitions viewed
+  </p>
+</section>
+
+<script>
+  const laws = [
+    {
+      name: "Law of Proximity",
+      tag: "Grouping by Distance",
+      body: "Objects that are close to one another are perceived as a group or unit. The spatial distance between elements signals their relationship — nearby items are assumed to belong together, regardless of their shape, colour, or size.",
+      example: "In a mobile contact list, name and phone number sit close together — so users instantly read them as one entry, not two separate pieces of data."
+    },
+    {
+      name: "Law of Similarity",
+      tag: "Grouping by Appearance",
+      body: "Elements that share visual characteristics — colour, shape, size, texture, or orientation — are perceived as related or belonging to the same category. Similarity overrides proximity when the visual contrast is strong enough.",
+      example: "On a webpage, all blue underlined words are immediately recognised as hyperlinks because they share the same visual signature, even when scattered throughout unrelated paragraphs."
+    },
+    {
+      name: "Law of Continuity",
+      tag: "Following a Path",
+      body: "The human eye naturally follows lines, curves, and sequences in their established direction, preferring smooth, continuous paths over abrupt changes. We organise visual input into the simplest, smoothest form possible.",
+      example: "A navigation breadcrumb trail (Home › Products › Shoes) reads as one continuous path guiding the user, not as three disconnected labels."
+    },
+    {
+      name: "Law of Closure",
+      tag: "Completing the Incomplete",
+      body: "The mind automatically fills in gaps within an incomplete figure to perceive a whole, recognisable shape. People supply missing information from memory and context rather than seeing disconnected fragments.",
+      example: "The World Wildlife Fund (WWF) logo uses a partially outlined panda — viewers automatically complete the missing contour lines and perceive a full panda silhouette."
+    },
+    {
+      name: "Law of Figure & Ground",
+      tag: "Separating Subject from Scene",
+      body: "Visual perception naturally separates a scene into a dominant subject (figure) and a receding background (ground). What we focus on becomes the figure; everything else becomes the ground — and this distinction can shift with attention.",
+      example: "A modal dialog box with a darkened overlay behind it exploits figure–ground: the dialog is the sharp, bright figure, while the dimmed page becomes the inactive ground."
+    },
+    {
+      name: "Law of Prägnanz",
+      tag: "Simplicity & Good Form",
+      body: "Also called the Law of Simplicity or Good Form, this is the overarching Gestalt principle: the mind always perceives stimuli in the simplest, most stable, and most regular form available. Ambiguous forms are resolved into their most orderly interpretation.",
+      example: "The Olympic rings logo — five overlapping circles — is perceived as five clean circles, not as a complex series of arcs and curved segments, because the circle is the simplest interpretation."
+    }
+  ];
+
+  const total = laws.length;
+  const viewed = new Set();
+  let activeLaw = null;
+
+  const menu       = document.getElementById('menu');
+  const panel      = document.getElementById('panel');
+  const placeholder = document.getElementById('placeholder');
+  const barFill    = document.getElementById('barFill');
+  const pctText    = document.getElementById('pctText');
+  const viewedCount = document.getElementById('viewedCount');
+  const totalCount  = document.getElementById('totalCount');
+  totalCount.textContent = total;
+
+  laws.forEach((law, i) => {
+    const btn = document.createElement('button');
+    btn.className = 'law-btn';
+    btn.dataset.index = i;
+    btn.innerHTML = `
+      <div class="btn-inner">
+        <span class="num">${String(i+1).padStart(2,'0')}</span>
+        <span class="name">${law.name}</span>
+        <span class="tick"></span>
+      </div>`;
+    btn.addEventListener('click', () => showLaw(i));
+    menu.appendChild(btn);
+
+    const card = document.createElement('div');
+    card.className = 'definition';
+    card.id = `def-${i}`;
+    card.innerHTML = `
+      <div class="def-tag">${law.tag}</div>
+      <div class="def-title">${law.name}</div>
+      <div class="def-divider"></div>
+      <div class="def-body">${law.body}</div>
+      <div class="def-example">
+        <strong>Real-world example</strong>
+        ${law.example}
+      </div>`;
+    panel.appendChild(card);
+  });
+
+  function showLaw(i) {
+    if (activeLaw !== null) {
+      menu.children[activeLaw + 1].classList.remove('active');
+    }
+    const allBtns = menu.querySelectorAll('.law-btn');
+    allBtns[i].classList.add('active');
+    activeLaw = i;
+
+    if (!viewed.has(i)) {
+      viewed.add(i);
+      allBtns[i].classList.add('viewed');
+      updateProgress();
+    }
+
+    placeholder.style.display = 'none';
+    document.querySelectorAll('.definition').forEach(d => d.classList.remove('show'));
+    const card = document.getElementById(`def-${i}`);
+    card.classList.remove('show');
+    void card.offsetWidth;
+    card.classList.add('show');
+  }
+
+  function updateProgress() {
+    const n = viewed.size;
+    const pct = Math.round((n / total) * 100);
+    barFill.style.width = pct + '%';
+    pctText.textContent = pct + '%';
+    viewedCount.textContent = n;
+    if (n === total) {
+      barFill.classList.add('complete');
+      pctText.classList.add('complete');
+    }
+  }
+</script>
+
+</body>
+</html>
